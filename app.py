@@ -1,17 +1,19 @@
-import streamlit as st
-import textwrap
+import os
 
+import streamlit as st
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from database.database import (
     initialize_database,
     create_user,
     get_user,
-    add_stego_history,
     get_user_history
 )
 
-from algorithms.aes import encrypt_message, ciphertext_to_binary
+from algorithms.aes import (
+    encrypt_message,
+    ciphertext_to_binary
+)
 
 
 # ============================================================
@@ -19,18 +21,6 @@ from algorithms.aes import encrypt_message, ciphertext_to_binary
 # ============================================================
 
 initialize_database()
-
-
-# ============================================================
-# PASSWORD FUNCTIONS
-# ============================================================
-
-def hash_password(password):
-    return generate_password_hash(password)
-
-
-def verify_password(password, password_hash):
-    return check_password_hash(password_hash, password)
 
 
 # ============================================================
@@ -43,25 +33,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-
-
-# ============================================================
-# COLOR PALETTE
-# ============================================================
-
-BACKGROUND = "#0B1628"
-SURFACE = "#12243A"
-SURFACE_LIGHT = "#18314D"
-
-PRIMARY = "#3B9EFF"
-PRIMARY_HOVER = "#61B3FF"
-PRIMARY_LIGHT = "#DCEEFF"
-
-TEXT = "#F4F8FC"
-TEXT_SECONDARY = "#B9C8D8"
-TEXT_MUTED = "#8192A5"
-
-BORDER = "#263D56"
 
 
 # ============================================================
@@ -82,11 +53,16 @@ if "username" not in st.session_state:
 
 
 # ============================================================
-# HTML HELPER
+# PROJECT PATHS
 # ============================================================
 
-def render_html(content):
-    st.html(textwrap.dedent(content))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+LOGO_PATH = os.path.join(
+    BASE_DIR,
+    "assets",
+    "stegosecure_logo.png"
+)
 
 
 # ============================================================
@@ -94,360 +70,410 @@ def render_html(content):
 # ============================================================
 
 st.markdown(
-    f"""
+    """
     <style>
 
-    .stApp {{
-        background-color: {BACKGROUND};
-        color: {TEXT};
-    }}
+    /* ========================================================
+       GLOBAL
+       ======================================================== */
 
-    .main .block-container {{
+    .stApp {
+        background-color: #081B33;
+        color: #F5F8FC;
+    }
+
+    .main .block-container {
         max-width: 1200px;
-        padding-top: 30px;
-        padding-bottom: 70px;
-    }}
+        padding-top: 25px;
+        padding-bottom: 60px;
+    }
 
-    body {{
+    body {
         font-family:
-            Inter,
             -apple-system,
             BlinkMacSystemFont,
             "Segoe UI",
+            Roboto,
+            Arial,
             sans-serif;
-    }}
+    }
 
-    [data-testid="stToolbar"] {{
-        visibility: hidden;
-        height: 0;
-    }}
 
-    [data-testid="stDecoration"] {{
-        display: none;
-    }}
+    /* ========================================================
+       HIDE STREAMLIT CONTROLS
+       ======================================================== */
 
-    [data-testid="stStatusWidget"] {{
-        display: none;
-    }}
+    [data-testid="stDeployButton"] {
+        display: none !important;
+    }
 
-    header {{
-        background: transparent !important;
-    }}
+    [data-testid="stToolbar"] {
+        display: none !important;
+    }
 
-    /* --------------------------------------------------------
-       NAVIGATION
-       -------------------------------------------------------- */
+    [data-testid="stHeader"] {
+        background-color: #081B33 !important;
+    }
 
-    .top-nav {{
-        padding: 18px 0;
-        border-bottom: 1px solid {BORDER};
+
+    /* ========================================================
+       HEADER
+       ======================================================== */
+
+    .header-divider {
+        height: 1px;
+
+        background-color: #294969;
+
+        margin-top: 8px;
+
         margin-bottom: 45px;
-    }}
+    }
 
-    .logo {{
-        color: {TEXT};
-        font-size: 27px;
+
+    /* ========================================================
+       BRAND NAME
+       ======================================================== */
+
+    .brand-name {
+        color: #F5F8FC;
+
+        font-size: 25px;
+
         font-weight: 700;
-        letter-spacing: -0.6px;
-    }}
 
-    .logo-mark {{
-        display: inline-flex;
-        width: 34px;
-        height: 34px;
-        align-items: center;
-        justify-content: center;
-        background: {PRIMARY};
-        color: white;
-        border-radius: 8px;
-        margin-right: 10px;
-        font-size: 17px;
-        font-weight: 700;
-    }}
+        line-height: 58px;
 
-    .logo-description {{
-        color: {TEXT_MUTED};
-        font-size: 14px;
-        margin-top: 4px;
-        margin-left: 45px;
-    }}
+        white-space: nowrap;
 
-    /* --------------------------------------------------------
-       HERO
-       -------------------------------------------------------- */
+        letter-spacing: -0.4px;
+    }
 
-    .hero {{
-        text-align: center;
-        padding: 25px 0 45px 0;
-    }}
 
-    .hero-label {{
-        display: inline-block;
-        color: {PRIMARY};
-        background-color: rgba(59, 158, 255, 0.10);
-        border: 1px solid rgba(59, 158, 255, 0.30);
-        border-radius: 20px;
-        padding: 8px 17px;
-        font-size: 15px;
-        font-weight: 600;
-        margin-bottom: 24px;
-    }}
+    /* ========================================================
+       NAVIGATION BUTTONS
+       ======================================================== */
 
-    .hero-title {{
-        color: {TEXT};
-        font-size: 52px;
-        line-height: 1.15;
-        font-weight: 750;
-        letter-spacing: -1.5px;
-        max-width: 850px;
-        margin: 0 auto;
-    }}
+    .nav-button button {
+        background-color: #12345A !important;
 
-    .hero-title span {{
-        color: {PRIMARY};
-    }}
+        color: #EAF4FF !important;
 
-    .hero-description {{
-        color: {TEXT_SECONDARY};
-        font-size: 19px;
-        line-height: 1.7;
-        max-width: 720px;
-        margin: 24px auto 30px auto;
-    }}
+        border: 1px solid #31577D !important;
 
-    /* --------------------------------------------------------
-       BUTTONS
-       -------------------------------------------------------- */
+        border-radius: 7px !important;
 
-    .stButton > button {{
-        background-color: {PRIMARY};
-        color: white;
-        border: 1px solid {PRIMARY};
+        min-height: 45px !important;
+
+        font-size: 15px !important;
+
+        font-weight: 600 !important;
+
+        box-shadow: none !important;
+
+        outline: none !important;
+    }
+
+    .nav-button button:hover {
+        background-color: #19466F !important;
+
+        color: #FFFFFF !important;
+
+        border-color: #4DA3FF !important;
+
+        box-shadow: none !important;
+    }
+
+    .nav-button button:focus,
+    .nav-button button:focus-visible,
+    .nav-button button:active {
+        background-color: #19466F !important;
+
+        color: #FFFFFF !important;
+
+        border: 1px solid #4DA3FF !important;
+
+        box-shadow: none !important;
+
+        outline: none !important;
+    }
+
+
+    /* ========================================================
+       GENERAL BUTTONS
+       ======================================================== */
+
+    .stButton button {
+        background-color: #12345A;
+
+        color: #F5F8FC;
+
+        border: 1px solid #3A5D82;
+
         border-radius: 7px;
+
         min-height: 46px;
-        font-size: 16px;
+
+        font-size: 15px;
+
         font-weight: 600;
-        padding: 8px 18px;
-        transition: 0.2s ease;
-    }}
 
-    .stButton > button:hover {{
-        background-color: {PRIMARY_HOVER};
-        border-color: {PRIMARY_HOVER};
-        color: white;
-    }}
+        box-shadow: none;
+    }
 
-    /* --------------------------------------------------------
+    .stButton button:hover {
+        background-color: #19466F;
+
+        color: #FFFFFF;
+
+        border-color: #4DA3FF;
+
+        box-shadow: none;
+    }
+
+
+    /* ========================================================
+       PRIMARY BUTTON
+       ======================================================== */
+
+    .primary-button button {
+        background-color: #3B91E8 !important;
+
+        color: #FFFFFF !important;
+
+        border: 1px solid #3B91E8 !important;
+
+        border-radius: 7px !important;
+
+        min-height: 48px !important;
+
+        font-size: 16px !important;
+
+        font-weight: 650 !important;
+    }
+
+    .primary-button button:hover {
+        background-color: #55A5F5 !important;
+
+        border-color: #55A5F5 !important;
+
+        color: #071A30 !important;
+    }
+
+
+    /* ========================================================
        HEADINGS
-       -------------------------------------------------------- */
+       ======================================================== */
 
-    .section-heading {{
-        color: {TEXT};
-        font-size: 32px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-        margin-top: 40px;
-        margin-bottom: 24px;
-    }}
+    h1 {
+        color: #F5F8FC !important;
 
-    /* --------------------------------------------------------
-       CARDS
-       -------------------------------------------------------- */
+        font-size: 48px !important;
 
-    .intro-card {{
-        background-color: {SURFACE};
-        border: 1px solid {BORDER};
-        border-radius: 12px;
-        padding: 30px;
-        min-height: 230px;
-    }}
+        font-weight: 750 !important;
 
-    .intro-card h3 {{
-        color: {TEXT};
-        font-size: 23px;
-        font-weight: 650;
-        margin-bottom: 15px;
-    }}
+        line-height: 1.2 !important;
 
-    .intro-card p {{
-        color: {TEXT_SECONDARY};
+        letter-spacing: -1px !important;
+    }
+
+    h2 {
+        color: #F5F8FC !important;
+
+        font-size: 31px !important;
+
+        font-weight: 700 !important;
+    }
+
+    h3 {
+        color: #F5F8FC !important;
+
+        font-size: 21px !important;
+
+        font-weight: 650 !important;
+    }
+
+    p {
+        color: #C5D4E7;
+
         font-size: 17px;
-        line-height: 1.8;
-        margin: 0;
-    }}
 
-    .feature-card {{
-        background-color: {SURFACE};
-        border: 1px solid {BORDER};
-        border-radius: 11px;
-        padding: 28px;
-        min-height: 190px;
-    }}
+        line-height: 1.7;
+    }
 
-    .feature-number {{
-        color: {PRIMARY};
+
+    /* ========================================================
+       HOME PAGE
+       ======================================================== */
+
+    .eyebrow {
+        color: #55A5F5;
+
         font-size: 14px;
+
         font-weight: 700;
-        letter-spacing: 1px;
-        margin-bottom: 18px;
-    }}
 
-    .feature-title {{
-        color: {TEXT};
-        font-size: 21px;
-        font-weight: 650;
-        margin-bottom: 12px;
-    }}
+        letter-spacing: 1.4px;
 
-    .feature-description {{
-        color: {TEXT_SECONDARY};
-        font-size: 16px;
-        line-height: 1.75;
-    }}
+        margin-top: 50px;
 
-    .step-card {{
-        background-color: {SURFACE};
-        border: 1px solid {BORDER};
-        border-radius: 10px;
-        padding: 22px 26px;
-        margin-bottom: 12px;
-    }}
+        margin-bottom: 14px;
+    }
 
-    .step-number {{
-        color: {PRIMARY};
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        margin-bottom: 6px;
-    }}
+    .home-description {
+        max-width: 820px;
 
-    .step-title {{
-        color: {TEXT};
+        color: #C5D4E7;
+
         font-size: 19px;
-        font-weight: 650;
-        margin-bottom: 6px;
-    }}
 
-    .step-description {{
-        color: {TEXT_SECONDARY};
-        font-size: 16px;
-        line-height: 1.65;
-    }}
+        line-height: 1.75;
 
-    /* --------------------------------------------------------
-       AUTHENTICATION
-       -------------------------------------------------------- */
+        margin-bottom: 35px;
+    }
 
-    .auth-header {{
-        text-align: center;
-        margin: 40px auto 35px auto;
-    }}
+    .section-divider {
+        height: 1px;
 
-    .auth-title {{
-        color: {TEXT};
-        font-size: 38px;
+        background-color: #294969;
+
+        margin: 45px 0;
+    }
+
+
+    /* ========================================================
+       CARDS
+       ======================================================== */
+
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #102A4C;
+
+        border: 1px solid #294969;
+
+        border-radius: 10px;
+    }
+
+
+    /* ========================================================
+       FEATURE LABEL
+       ======================================================== */
+
+    .feature-label {
+        color: #55A5F5;
+
+        font-size: 13px;
+
         font-weight: 700;
+
+        letter-spacing: 1px;
+
         margin-bottom: 10px;
-    }}
+    }
 
-    .auth-description {{
-        color: {TEXT_SECONDARY};
+
+    /* ========================================================
+       AUTHENTICATION
+       ======================================================== */
+
+    .auth-description {
+        color: #AFC2D8;
+
         font-size: 17px;
-    }}
 
-    /* --------------------------------------------------------
+        text-align: center;
+
+        margin-bottom: 30px;
+    }
+
+
+    /* ========================================================
        INPUTS
-       -------------------------------------------------------- */
+       ======================================================== */
 
     .stTextInput label,
-    .stTextArea label {{
-        color: {TEXT};
-        font-size: 16px;
-        font-weight: 600;
-    }}
+    .stTextArea label,
+    .stFileUploader label {
+        color: #E9F1FA !important;
+
+        font-size: 15px !important;
+
+        font-weight: 600 !important;
+    }
 
     .stTextInput input,
-    .stTextArea textarea {{
-        background-color: {SURFACE};
-        color: {TEXT};
-        border: 1px solid {BORDER};
-        border-radius: 7px;
-        font-size: 16px;
-        padding: 10px 12px;
-    }}
+    .stTextArea textarea {
+        background-color: #102A4C !important;
+
+        color: #F5F8FC !important;
+
+        border: 1px solid #355579 !important;
+
+        border-radius: 7px !important;
+
+        font-size: 16px !important;
+    }
 
     .stTextInput input:focus,
-    .stTextArea textarea:focus {{
-        border-color: {PRIMARY};
-        box-shadow: 0 0 0 1px {PRIMARY};
-    }}
+    .stTextArea textarea:focus {
+        border-color: #4DA3FF !important;
 
-    /* --------------------------------------------------------
+        box-shadow: 0 0 0 1px #4DA3FF !important;
+    }
+
+
+    /* ========================================================
        FILE UPLOADER
-       -------------------------------------------------------- */
+       ======================================================== */
 
-    [data-testid="stFileUploader"] {{
-        background-color: {SURFACE};
-        border: 1px solid {BORDER};
-        border-radius: 10px;
-        padding: 8px;
-    }}
+    [data-testid="stFileUploaderDropzone"] {
+        background-color: #102A4C;
 
-    [data-testid="stFileUploader"] label {{
-        color: {TEXT};
-        font-size: 16px;
-    }}
+        border: 1px dashed #466887;
 
-    /* --------------------------------------------------------
-       DASHBOARD
-       -------------------------------------------------------- */
+        border-radius: 8px;
+    }
 
-    .dashboard-card {{
-        background-color: {SURFACE};
-        border: 1px solid {BORDER};
-        border-radius: 11px;
-        padding: 30px;
-        margin-bottom: 16px;
-    }}
 
-    .dashboard-title {{
-        color: {TEXT};
-        font-size: 22px;
-        font-weight: 650;
-    }}
+    /* ========================================================
+       METRICS
+       ======================================================== */
 
-    .dashboard-text {{
-        color: {TEXT_SECONDARY};
-        font-size: 16px;
-        line-height: 1.7;
-    }}
+    [data-testid="stMetric"] {
+        background-color: #102A4C;
 
-    /* --------------------------------------------------------
-       DIVIDER
-       -------------------------------------------------------- */
+        border: 1px solid #294969;
 
-    .custom-divider {{
-        height: 1px;
-        background-color: {BORDER};
-        margin: 45px 0;
-    }}
+        border-radius: 9px;
 
-    /* --------------------------------------------------------
+        padding: 20px;
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: #AFC2D8 !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: #F5F8FC !important;
+    }
+
+
+    /* ========================================================
        FOOTER
-       -------------------------------------------------------- */
+       ======================================================== */
 
-    .footer {{
+    .footer {
+        color: #8299B3;
+
         text-align: center;
-        color: {TEXT_MUTED};
-        font-size: 14px;
-        padding: 50px 0 10px 0;
-    }}
 
-    .stMarkdown p {{
-        color: {TEXT_SECONDARY};
-        font-size: 17px;
-        line-height: 1.75;
-    }}
+        font-size: 14px;
+
+        margin-top: 60px;
+
+        padding-top: 25px;
+
+        border-top: 1px solid #294969;
+    }
 
     </style>
     """,
@@ -456,64 +482,146 @@ st.markdown(
 
 
 # ============================================================
-# TOP NAVIGATION
+# PASSWORD FUNCTIONS
 # ============================================================
 
-nav_left, nav_home, nav_login, nav_register = st.columns(
-    [6.4, 1, 1, 1]
+def hash_password(password):
+    return generate_password_hash(password)
+
+
+def verify_password(password, password_hash):
+    return check_password_hash(password_hash, password)
+
+
+# ============================================================
+# HEADER
+# ============================================================
+
+logo_column, brand_column, empty_column, home_column, login_column, register_column = st.columns(
+    [0.75, 2.0, 4.0, 1.2, 1.2, 1.2],
+    gap="small"
 )
 
-with nav_left:
 
-    render_html(
+# ============================================================
+# LOGO
+# ============================================================
+
+with logo_column:
+
+    if os.path.exists(LOGO_PATH):
+
+        st.image(
+            LOGO_PATH,
+            width=58
+        )
+
+    else:
+
+        st.write("S")
+
+
+# ============================================================
+# BRAND NAME
+# ============================================================
+
+with brand_column:
+
+    st.markdown(
         """
-        <div class="top-nav">
-
-            <div class="logo">
-                <span class="logo-mark">S</span>
-                StegoSecure
-            </div>
-
-            <div class="logo-description">
-                Secure image-based message hiding
-            </div>
-
+        <div class="brand-name">
+            StegoSecure
         </div>
-        """
+        """,
+        unsafe_allow_html=True
     )
 
 
-with nav_home:
+# ============================================================
+# HOME BUTTON
+# ============================================================
+
+with home_column:
+
+    st.markdown(
+        '<div class="nav-button">',
+        unsafe_allow_html=True
+    )
 
     if st.button(
         "Home",
-        key="nav_home",
+        key="header_home_button",
         use_container_width=True
     ):
+
         st.session_state.page = "Home"
+
         st.rerun()
 
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True
+    )
 
-with nav_login:
+
+# ============================================================
+# LOGIN BUTTON
+# ============================================================
+
+with login_column:
+
+    st.markdown(
+        '<div class="nav-button">',
+        unsafe_allow_html=True
+    )
 
     if st.button(
         "Login",
-        key="nav_login",
+        key="header_login_button",
         use_container_width=True
     ):
+
         st.session_state.page = "Login"
+
         st.rerun()
 
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True
+    )
 
-with nav_register:
+
+# ============================================================
+# REGISTER BUTTON
+# ============================================================
+
+with register_column:
+
+    st.markdown(
+        '<div class="nav-button">',
+        unsafe_allow_html=True
+    )
 
     if st.button(
         "Register",
-        key="nav_register",
+        key="header_register_button",
         use_container_width=True
     ):
+
         st.session_state.page = "Register"
+
         st.rerun()
+
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+
+st.markdown(
+    '<div class="header-divider"></div>',
+    unsafe_allow_html=True
+)
 
 
 # ============================================================
@@ -522,257 +630,138 @@ with nav_register:
 
 def home_page():
 
-    render_html(
+    st.markdown(
+        '<div class="eyebrow">IMAGE STEGANOGRAPHY</div>',
+        unsafe_allow_html=True
+    )
+
+    st.title(
+        "Protect information inside ordinary images."
+    )
+
+    st.markdown(
         """
-        <div class="hero">
-
-            <div class="hero-label">
-                Image Steganography
-            </div>
-
-            <div class="hero-title">
-                Secure your message.
-                <span>Hide it in plain sight.</span>
-            </div>
-
-            <div class="hero-description">
-                StegoSecure helps protect a private message,
-                encrypt it, and hide it inside an image while
-                maintaining the visual appearance of the image.
-            </div>
-
+        <div class="home-description">
+        StegoSecure combines message encryption with image
+        steganography to provide a secure way to conceal
+        confidential information within digital images.
         </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        '<div class="section-divider"></div>',
+        unsafe_allow_html=True
+    )
+
+    st.header("About StegoSecure")
+
+    st.write(
+        """
+        StegoSecure is a secure image steganography application
+        designed to protect confidential information while
+        concealing it within digital images.
         """
     )
 
-    hero_left, hero_button, hero_right = st.columns([2, 1, 2])
-
-    with hero_button:
-
-        if st.button(
-            "Get Started",
-            key="hero_get_started",
-            use_container_width=True
-        ):
-            st.session_state.page = "Register"
-            st.rerun()
-
-    render_html(
+    st.write(
         """
-        <div class="custom-divider"></div>
-
-        <div class="section-heading">
-            What is StegoSecure?
-        </div>
+        The system first protects the secret message through
+        encryption and then prepares the encrypted information
+        for image-based embedding.
         """
     )
 
-    intro_left, intro_right = st.columns([1.3, 1], gap="large")
-
-    with intro_left:
-
-        render_html(
-            """
-            <div class="intro-card">
-
-                <h3>
-                    A simple way to protect hidden information
-                </h3>
-
-                <p>
-                    StegoSecure is a web application designed to
-                    hide confidential messages inside digital images.
-                    Before the message is embedded, it is encrypted
-                    to provide an additional layer of protection.
-                </p>
-
-                <br>
-
-                <p>
-                    The application also considers different regions
-                    of the image when deciding how the information
-                    should be embedded.
-                </p>
-
-            </div>
-            """
-        )
-
-    with intro_right:
-
-        render_html(
-            """
-            <div class="intro-card">
-
-                <h3>
-                    Designed for secure sharing
-                </h3>
-
-                <p>
-                    The resulting image should appear visually
-                    similar to the original image while carrying
-                    the protected information.
-                </p>
-
-                <br>
-
-                <p>
-                    StegoSecure combines encryption and image
-                    steganography in one application.
-                </p>
-
-            </div>
-            """
-        )
-
-    render_html(
-        """
-        <div class="section-heading">
-            Features
-        </div>
-        """
+    st.markdown(
+        '<div class="section-divider"></div>',
+        unsafe_allow_html=True
     )
 
-    feature1, feature2, feature3 = st.columns(3, gap="medium")
+    st.header("Key capabilities")
+
+    feature1, feature2, feature3 = st.columns(
+        3,
+        gap="medium"
+    )
+
+
+    # ========================================================
+    # FEATURE 1
+    # ========================================================
 
     with feature1:
 
-        render_html(
-            """
-            <div class="feature-card">
+        with st.container(border=True):
 
-                <div class="feature-number">
-                    01
-                </div>
+            st.markdown(
+                '<div class="feature-label">SECURITY</div>',
+                unsafe_allow_html=True
+            )
 
-                <div class="feature-title">
-                    Message Encryption
-                </div>
+            st.subheader("AES Encryption")
 
-                <div class="feature-description">
-                    The secret message is encrypted before it is
-                    embedded into the image.
-                </div>
+            st.write(
+                """
+                The secret message is encrypted before it is
+                processed for the embedding stage.
+                """
+            )
 
-            </div>
-            """
-        )
+
+    # ========================================================
+    # FEATURE 2
+    # ========================================================
 
     with feature2:
 
-        render_html(
-            """
-            <div class="feature-card">
+        with st.container(border=True):
 
-                <div class="feature-number">
-                    02
-                </div>
+            st.markdown(
+                '<div class="feature-label">STEGANOGRAPHY</div>',
+                unsafe_allow_html=True
+            )
 
-                <div class="feature-title">
-                    Adaptive Embedding
-                </div>
+            st.subheader("Adaptive Embedding")
 
-                <div class="feature-description">
-                    Image regions are considered when deciding how
-                    strongly the hidden information should be embedded.
-                </div>
+            st.write(
+                """
+                Image characteristics can be considered when
+                selecting suitable regions for hiding information.
+                """
+            )
 
-            </div>
-            """
-        )
+
+    # ========================================================
+    # FEATURE 3
+    # ========================================================
 
     with feature3:
 
-        render_html(
-            """
-            <div class="feature-card">
+        with st.container(border=True):
 
-                <div class="feature-number">
-                    03
-                </div>
+            st.markdown(
+                '<div class="feature-label">EVALUATION</div>',
+                unsafe_allow_html=True
+            )
 
-                <div class="feature-title">
-                    Image Quality
-                </div>
+            st.subheader("Quality Evaluation")
 
-                <div class="feature-description">
-                    Image quality can be evaluated after embedding
-                    to check whether the visual appearance is maintained.
-                </div>
+            st.write(
+                """
+                PSNR, SSIM and MSE can be used to evaluate
+                changes between the original and stego images.
+                """
+            )
 
-            </div>
-            """
-        )
 
-    render_html(
-        """
-        <div class="section-heading">
-            How to use
-        </div>
-        """
-    )
-
-    steps = [
-        (
-            "01",
-            "Create an account",
-            "Register for a StegoSecure account."
-        ),
-        (
-            "02",
-            "Choose an image",
-            "Select the image that you want to use as the cover image."
-        ),
-        (
-            "03",
-            "Enter your message",
-            "Type the confidential message that you want to hide."
-        ),
-        (
-            "04",
-            "Protect your message",
-            "Provide the encryption key that will be used to protect the message."
-        ),
-        (
-            "05",
-            "Create the stego image",
-            "The protected message will be processed and embedded into the image."
-        ),
-        (
-            "06",
-            "View your history",
-            "Previously generated stego images can be viewed from the dashboard."
-        )
-    ]
-
-    for number, title, description in steps:
-
-        render_html(
-            f"""
-            <div class="step-card">
-
-                <div class="step-number">
-                    {number}
-                </div>
-
-                <div class="step-title">
-                    {title}
-                </div>
-
-                <div class="step-description">
-                    {description}
-                </div>
-
-            </div>
-            """
-        )
-
-    render_html(
+    st.markdown(
         """
         <div class="footer">
-            StegoSecure
+        StegoSecure · Secure image-based message hiding
         </div>
-        """
+        """,
+        unsafe_allow_html=True
     )
 
 
@@ -782,25 +771,22 @@ def home_page():
 
 def login_page():
 
-    left, center, right = st.columns([1, 2, 1])
+    st.title("Sign in")
+
+    st.markdown(
+        """
+        <div class="auth-description">
+        Sign in to access your StegoSecure workspace.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    left, center, right = st.columns(
+        [1.2, 2, 1.2]
+    )
 
     with center:
-
-        render_html(
-            """
-            <div class="auth-header">
-
-                <div class="auth-title">
-                    Welcome back
-                </div>
-
-                <div class="auth-description">
-                    Sign in to continue to StegoSecure.
-                </div>
-
-            </div>
-            """
-        )
 
         username = st.text_input(
             "Username",
@@ -813,9 +799,16 @@ def login_page():
             key="login_password"
         )
 
+        st.write("")
+
+        st.markdown(
+            '<div class="primary-button">',
+            unsafe_allow_html=True
+        )
+
         if st.button(
-            "Login",
-            key="login_submit",
+            "Sign in",
+            key="login_submit_button",
             use_container_width=True
         ):
 
@@ -838,14 +831,22 @@ def login_page():
                 else:
 
                     user_id = user[0]
+
                     stored_username = user[1]
+
                     password_hash = user[3]
 
-                    if verify_password(password, password_hash):
+                    if verify_password(
+                        password,
+                        password_hash
+                    ):
 
                         st.session_state.logged_in = True
+
                         st.session_state.user_id = user_id
+
                         st.session_state.username = stored_username
+
                         st.session_state.page = "Dashboard"
 
                         st.rerun()
@@ -856,15 +857,21 @@ def login_page():
                             "Invalid username or password."
                         )
 
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True
+        )
+
         st.write("")
 
         if st.button(
             "Back to Home",
-            key="login_back",
+            key="login_back_button",
             use_container_width=True
         ):
 
             st.session_state.page = "Home"
+
             st.rerun()
 
 
@@ -874,25 +881,22 @@ def login_page():
 
 def register_page():
 
-    left, center, right = st.columns([1, 2, 1])
+    st.title("Create an account")
+
+    st.markdown(
+        """
+        <div class="auth-description">
+        Create your StegoSecure account.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    left, center, right = st.columns(
+        [1.2, 2, 1.2]
+    )
 
     with center:
-
-        render_html(
-            """
-            <div class="auth-header">
-
-                <div class="auth-title">
-                    Create your account
-                </div>
-
-                <div class="auth-description">
-                    Register to start using StegoSecure.
-                </div>
-
-            </div>
-            """
-        )
 
         username = st.text_input(
             "Username",
@@ -916,13 +920,21 @@ def register_page():
             key="register_confirm_password"
         )
 
+        st.write("")
+
+        st.markdown(
+            '<div class="primary-button">',
+            unsafe_allow_html=True
+        )
+
         if st.button(
-            "Create Account",
-            key="register_submit",
+            "Create account",
+            key="register_submit_button",
             use_container_width=True
         ):
 
             username = username.strip()
+
             email = email.strip()
 
             if not username or not email or not password:
@@ -951,7 +963,9 @@ def register_page():
 
             else:
 
-                password_hash = hash_password(password)
+                password_hash = hash_password(
+                    password
+                )
 
                 created = create_user(
                     username,
@@ -962,7 +976,11 @@ def register_page():
                 if created:
 
                     st.success(
-                        "Account created successfully. You can now login."
+                        "Account created successfully."
+                    )
+
+                    st.info(
+                        "You can now sign in."
                     )
 
                 else:
@@ -971,112 +989,173 @@ def register_page():
                         "Username or email already exists."
                     )
 
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True
+        )
+
         st.write("")
 
         if st.button(
             "Back to Home",
-            key="register_back",
+            key="register_back_button",
             use_container_width=True
         ):
 
             st.session_state.page = "Home"
+
             st.rerun()
 
 
 # ============================================================
-# DASHBOARD PAGE
+# DASHBOARD
 # ============================================================
 
 def dashboard_page():
 
     username = st.session_state.username
 
-    render_html(
-        f"""
-        <div class="section-heading">
-            Welcome, {username}
-        </div>
-        """
+    user_id = st.session_state.user_id
+
+    history = get_user_history(user_id)
+
+    total_images = len(history)
+
+    latest_psnr = "Not available"
+
+    latest_date = "Not available"
+
+
+    if history:
+
+        if history[0][4] is not None:
+
+            latest_psnr = (
+                f"{history[0][4]:.2f} dB"
+            )
+
+        latest_date = str(
+            history[0][7]
+        )[:10]
+
+
+    st.title("Dashboard")
+
+    st.write(
+        f"Welcome back, {username}."
     )
 
     st.write(
-        "Manage your image steganography activities from here."
+        "Manage your StegoSecure activity from one place."
     )
 
     st.write("")
 
-    dashboard1, dashboard2 = st.columns(2, gap="large")
 
-    with dashboard1:
+    metric1, metric2, metric3 = st.columns(
+        3
+    )
 
-        render_html(
-            """
-            <div class="dashboard-card">
 
-                <div class="dashboard-title">
-                    Create Stego Image
-                </div>
+    with metric1:
 
-                <br>
-
-                <div class="dashboard-text">
-                    Upload an image and hide a protected message
-                    inside it using the StegoSecure methodology.
-                </div>
-
-            </div>
-            """
+        st.metric(
+            "Stego Images Created",
+            total_images
         )
 
-        if st.button(
-            "Create Stego Image",
-            key="dashboard_create",
-            use_container_width=True
-        ):
 
-            st.session_state.page = "Create"
-            st.rerun()
+    with metric2:
 
-    with dashboard2:
-
-        render_html(
-            """
-            <div class="dashboard-card">
-
-                <div class="dashboard-title">
-                    Stego Image History
-                </div>
-
-                <br>
-
-                <div class="dashboard-text">
-                    View the stego images and processing details
-                    associated with your account.
-                </div>
-
-            </div>
-            """
+        st.metric(
+            "Latest PSNR",
+            latest_psnr
         )
 
-        if st.button(
-            "View History",
-            key="dashboard_history",
-            use_container_width=True
-        ):
 
-            st.session_state.page = "History"
-            st.rerun()
+    with metric3:
+
+        st.metric(
+            "Last Activity",
+            latest_date
+        )
+
+
+    st.write("")
+    st.write("")
+
+
+    action1, action2 = st.columns(
+        2,
+        gap="large"
+    )
+
+
+    with action1:
+
+        with st.container(border=True):
+
+            st.subheader(
+                "Create a stego image"
+            )
+
+            st.write(
+                """
+                Upload a cover image and protect a secret
+                message before the embedding stage.
+                """
+            )
+
+            if st.button(
+                "Create Stego Image",
+                key="dashboard_create_button",
+                use_container_width=True
+            ):
+
+                st.session_state.page = "Create"
+
+                st.rerun()
+
+
+    with action2:
+
+        with st.container(border=True):
+
+            st.subheader(
+                "Review history"
+            )
+
+            st.write(
+                """
+                View previously processed images and their
+                quality measurements.
+                """
+            )
+
+            if st.button(
+                "View History",
+                key="dashboard_history_button",
+                use_container_width=True
+            ):
+
+                st.session_state.page = "History"
+
+                st.rerun()
+
 
     st.write("")
 
     if st.button(
-        "Logout",
-        key="dashboard_logout"
+        "Sign out",
+        key="dashboard_signout_button"
     ):
 
         st.session_state.logged_in = False
+
         st.session_state.user_id = None
+
         st.session_state.username = None
+
         st.session_state.page = "Home"
 
         st.rerun()
@@ -1088,60 +1167,89 @@ def dashboard_page():
 
 def create_page():
 
-    render_html(
-        """
-        <div class="section-heading">
-            Create Stego Image
-        </div>
-        """
-    )
+    st.title("Create Stego Image")
 
     st.write(
-        "Choose an image and enter the message you want to hide."
+        """
+        Encrypt a secret message and prepare it for secure
+        embedding into a cover image.
+        """
     )
 
     st.write("")
 
-    image = st.file_uploader(
-        "Choose an image",
-        type=["png", "jpg", "jpeg"],
-        key="cover_image"
+
+    image_col, message_col = st.columns(
+        2,
+        gap="large"
     )
 
-    if image is not None:
 
-        st.image(
-            image,
-            caption="Selected Cover Image",
-            use_container_width=True
-        )
+    with image_col:
 
-    message = st.text_area(
-        "Secret Message",
-        height=180,
-        placeholder="Enter the message you want to hide...",
-        key="secret_message"
-    )
+        with st.container(border=True):
 
-    encryption_key = st.text_input(
-        "Encryption Key",
-        type="password",
-        placeholder="Enter your encryption key",
-        key="encryption_key"
-    )
+            st.subheader("Cover Image")
+
+            uploaded_image = st.file_uploader(
+                "Choose an image",
+                type=[
+                    "png",
+                    "jpg",
+                    "jpeg"
+                ],
+                key="cover_image_uploader"
+            )
+
+            if uploaded_image is not None:
+
+                st.image(
+                    uploaded_image,
+                    caption="Selected cover image",
+                    use_container_width=True
+                )
+
+
+    with message_col:
+
+        with st.container(border=True):
+
+            st.subheader("Secret Message")
+
+            message = st.text_area(
+                "Message",
+                height=180,
+                placeholder="Enter the message you want to hide...",
+                key="secret_message_input"
+            )
+
+            encryption_key = st.text_input(
+                "Encryption Key",
+                type="password",
+                placeholder="Enter your encryption key",
+                key="encryption_key_input"
+            )
+
 
     st.write("")
+
+
+    st.markdown(
+        '<div class="primary-button">',
+        unsafe_allow_html=True
+    )
+
 
     if st.button(
-        "Create Stego Image",
-        key="create_stego",
+        "Encrypt Message",
+        key="encrypt_message_button",
         use_container_width=True
     ):
 
-        if image is None:
+        if uploaded_image is None:
 
             st.warning(
-                "Please choose an image."
+                "Please choose a cover image."
             )
 
         elif not message.strip():
@@ -1173,29 +1281,45 @@ def create_page():
                     "Message encrypted successfully."
                 )
 
-                st.write(
-                    "Encrypted message prepared for embedding."
-                )
+                with st.container(border=True):
 
-                st.write(
-                    f"Encrypted data size: {len(binary_data)} bits"
-                )
+                    st.subheader(
+                        "Encryption Result"
+                    )
 
-            except ValueError as error:
+                    st.write(
+                        "The encrypted message is ready "
+                        "for the embedding stage."
+                    )
+
+                    st.write(
+                        f"Encrypted data size: "
+                        f"{len(binary_data)} bits"
+                    )
+
+            except Exception as error:
 
                 st.error(
-                    str(error)
+                    f"Encryption error: {error}"
                 )
+
+
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True
+    )
+
 
     st.write("")
 
+
     if st.button(
         "Back to Dashboard",
-        key="create_back_dashboard",
-        use_container_width=True
+        key="create_back_dashboard_button"
     ):
 
         st.session_state.page = "Dashboard"
+
         st.rerun()
 
 
@@ -1205,115 +1329,136 @@ def create_page():
 
 def history_page():
 
-    render_html(
-        """
-        <div class="section-heading">
-            Stego Image History
-        </div>
-        """
-    )
+    st.title("Stego Image History")
 
     st.write(
-        "Previously created stego images associated with your account."
+        """
+        Review the stego images associated with your account
+        and their quality measurements.
+        """
     )
 
-    st.write("")
 
     user_id = st.session_state.user_id
 
     history = get_user_history(user_id)
 
+
     if not history:
 
-        render_html(
-            """
-            <div class="dashboard-card">
+        with st.container(border=True):
 
-                <div class="dashboard-title">
-                    No images yet
-                </div>
+            st.subheader(
+                "No activity yet"
+            )
 
-                <br>
+            st.write(
+                """
+                Your processed stego images will appear here
+                after the embedding process is completed.
+                """
+            )
 
-                <div class="dashboard-text">
-                    Once you create a stego image, its processing
-                    details will be stored in your account history.
-                </div>
-
-            </div>
-            """
-        )
 
     else:
 
         for record in history:
 
-            (
-                record_id,
-                original_filename,
-                stego_filename,
-                message_length,
-                psnr,
-                ssim,
-                mse,
-                created_at
-            ) = record
+            original_filename = record[1]
 
-            render_html(
-                f"""
-                <div class="dashboard-card">
+            stego_filename = record[2]
 
-                    <div class="dashboard-title">
-                        {stego_filename or "Stego Image"}
-                    </div>
+            message_length = record[3]
 
-                    <br>
+            psnr = record[4]
 
-                    <div class="dashboard-text">
+            ssim = record[5]
 
-                        Original image:
-                        {original_filename}
+            mse = record[6]
 
-                        <br><br>
+            created_at = record[7]
 
-                        Message length:
-                        {message_length if message_length is not None else "Not available"}
 
-                        <br><br>
+            with st.container(border=True):
 
-                        PSNR:
-                        {psnr if psnr is not None else "Not available"}
+                st.subheader(
+                    stego_filename
+                    if stego_filename
+                    else "Stego Image"
+                )
 
-                        <br><br>
 
-                        SSIM:
-                        {ssim if ssim is not None else "Not available"}
+                information_col, metrics_col = st.columns(
+                    2
+                )
 
-                        <br><br>
 
-                        MSE:
-                        {mse if mse is not None else "Not available"}
+                with information_col:
 
-                        <br><br>
+                    st.write(
+                        f"Original image: {original_filename}"
+                    )
 
-                        Created:
-                        {created_at}
+                    st.write(
+                        f"Message length: {message_length}"
+                    )
 
-                    </div>
+                    st.write(
+                        f"Created: {created_at}"
+                    )
 
-                </div>
-                """
-            )
+
+                with metrics_col:
+
+                    if psnr is not None:
+
+                        st.write(
+                            f"PSNR: {psnr:.2f} dB"
+                        )
+
+                    else:
+
+                        st.write(
+                            "PSNR: Not available"
+                        )
+
+
+                    if ssim is not None:
+
+                        st.write(
+                            f"SSIM: {ssim:.4f}"
+                        )
+
+                    else:
+
+                        st.write(
+                            "SSIM: Not available"
+                        )
+
+
+                    if mse is not None:
+
+                        st.write(
+                            f"MSE: {mse:.4f}"
+                        )
+
+                    else:
+
+                        st.write(
+                            "MSE: Not available"
+                        )
+
 
     st.write("")
 
+
     if st.button(
         "Back to Dashboard",
-        key="history_back_dashboard",
-        use_container_width=True
+        key="history_back_dashboard_button"
     ):
 
         st.session_state.page = "Dashboard"
+
         st.rerun()
 
 
@@ -1325,13 +1470,16 @@ if st.session_state.page == "Home":
 
     home_page()
 
+
 elif st.session_state.page == "Login":
 
     login_page()
 
+
 elif st.session_state.page == "Register":
 
     register_page()
+
 
 elif st.session_state.page == "Dashboard":
 
@@ -1342,7 +1490,9 @@ elif st.session_state.page == "Dashboard":
     else:
 
         st.session_state.page = "Login"
+
         st.rerun()
+
 
 elif st.session_state.page == "Create":
 
@@ -1353,7 +1503,9 @@ elif st.session_state.page == "Create":
     else:
 
         st.session_state.page = "Login"
+
         st.rerun()
+
 
 elif st.session_state.page == "History":
 
@@ -1364,4 +1516,5 @@ elif st.session_state.page == "History":
     else:
 
         st.session_state.page = "Login"
+
         st.rerun()
